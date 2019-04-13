@@ -1,3 +1,5 @@
+smoker={}
+recipes={}
 minetest.register_craft({
 	output = 'bacon:smoker',
 	recipe = {
@@ -7,7 +9,29 @@ minetest.register_craft({
 	}
 })
 
+function smoker.register_craft(def)
+  recipes[def.recipe]=def
+end
 
+local function get_recipe(srclist)
+  local name = srclist:get_name()
+  local smoker_recipe =  recipes[name]
+  local cookable ={}
+  local decremented_input = {}
+  if smoker_recipe then 
+    cookable.item = smoker_recipe.output
+    cookable.time = smoker_recipe.cooktime
+    local count = srclist:get_count() - 1
+    --srclist:set_count(count)
+    decremented_input.method = "normal"
+    decremented_input.width = 1
+    decremented_input.items = {}
+    decremented_input.items[1] = srclist:peek_item(count)
+  else
+    cookable.time = 0
+  end
+  return cookable, decremented_input
+end
 --
 -- Formspecs
 --
@@ -82,7 +106,7 @@ local function allow_metadata_inventory_put(pos, listname, index, stack, player)
       return 0
 		end
 	elseif listname == "src" then
-    if minetest.get_item_group(stack:get_name(), "smokable_food") > 1 then
+    if minetest.get_item_group(stack:get_name(), "smokeable") > 0 then
 		   return stack:get_count()
     else return 0
     end
@@ -142,7 +166,11 @@ local function smoker_node_timer(pos, elapsed)
 
 		-- Check if we have cookable content
 		local aftercooked
-		cooked, aftercooked = minetest.get_craft_result({method = "cooking", width = 1, items = srclist})
+    -- for an input, output and time
+    if ( srclist ) then
+      local item = get_recipe(srclist[1])  
+    end
+		cooked, aftercooked = get_recipe(srclist[1]) -- minetest.get_craft_result({method = "cooking", width = 1, items = srclist})
 		cookable = cooked.time ~= 0
  
 		local el = math.min(elapsed, fuel_totaltime - fuel_time)
@@ -347,3 +375,5 @@ minetest.register_node("bacon:smoker_active", {
 	allow_metadata_inventory_move = allow_metadata_inventory_move,
 	allow_metadata_inventory_take = allow_metadata_inventory_take,
 })
+
+return smoker
